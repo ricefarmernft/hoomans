@@ -53,8 +53,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract Hoomans is ERC721, Ownable, ReentrancyGuard {
     // Merkle Root Variables
-    bytes32 public ohayoMerkleRoot;
-    bytes32 public chimkenMerkleRoot;
+    bytes32 public guaranteedMerkleRoot;
+    bytes32 public fcfsMerkleRoot;
 
     mapping(address => uint256) public ohayoMintedCount;
     mapping(address => uint256) public chimkenlistMintedCount;
@@ -94,13 +94,13 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
 
     // Constructor
     constructor(
-        bytes32 ohayoMerkleRoot_,
-        bytes32 chimkenMerkleRoot_,
+        bytes32 guaranteedMerkleRoot_,
+        bytes32 fcfsMerkleRoot_,
         address initialOwner
     ) ERC721("Hoomans", "HOOMANS") Ownable(initialOwner) {
         unrevealedURI = "https://arweave.net/NwvwWUZxrQl8KRofnG3Tq9WAV4UJC0ylFKv9iGWUtYk/"; // Default URI
-        _setOhayoMerkleRoot(ohayoMerkleRoot_);
-        _setChimkenMerkleRoot(chimkenMerkleRoot_);
+        guaranteedMerkleRoot = guaranteedMerkleRoot_;
+        fcfsMerkleRoot = fcfsMerkleRoot_;
     }
 
     // Check if address is whitelisted
@@ -110,12 +110,12 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
 
         // Check against the first group's Merkle Root
-        if (MerkleProof.verify(_merkleProof, ohayoMerkleRoot, leaf)) {
+        if (MerkleProof.verify(_merkleProof, guaranteedMerkleRoot, leaf)) {
             return true;
         }
 
         // Check against the second group's Merkle Root
-        if (MerkleProof.verify(_merkleProof, chimkenMerkleRoot, leaf)) {
+        if (MerkleProof.verify(_merkleProof, fcfsMerkleRoot, leaf)) {
             return true;
         }
 
@@ -148,13 +148,13 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
 
         // Find Leaf
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
-        bytes32 merkleRoot = group == 1 ? ohayoMerkleRoot : chimkenMerkleRoot;
+        bytes32 merkleRoot = group == 1 ? guaranteedMerkleRoot : fcfsMerkleRoot;
 
         require(
             MerkleProof.verify(_merkleProof, merkleRoot, leaf),
             group == 1
-                ? "Invalid Address: Ohayo WL Group"
-                : "Invalid Address: Chimkenlist Group"
+                ? "Invalid Address: Guaranteed Group"
+                : "Invalid Address: FCFS Group"
         );
 
         // Ensure not exceeding mint limit per group
@@ -345,17 +345,6 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
                 : "";
     }
 
-    // Internal Functions
-    function _setOhayoMerkleRoot(bytes32 ohayoMerkleRoot_) internal onlyOwner {
-        ohayoMerkleRoot = ohayoMerkleRoot_;
-    }
-
-    function _setChimkenMerkleRoot(
-        bytes32 chimkenMerkleRoot_
-    ) internal onlyOwner {
-        chimkenMerkleRoot = chimkenMerkleRoot_;
-    }
-
     // Calculate cost
     function calculateCost(uint256 numTokens) private view returns (uint256) {
         uint256 cost = 0;
@@ -403,14 +392,12 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         publicMintPrice = newPublicMintPrice;
     }
 
-    function setOhayoMerkleRoot(bytes32 ohayoMerkleRoot_) external onlyOwner {
-        _setOhayoMerkleRoot(ohayoMerkleRoot_);
+    function setGuaranteed(bytes32 guaranteedMerkleRoot_) external onlyOwner {
+        guaranteedMerkleRoot = guaranteedMerkleRoot_;
     }
 
-    function setChimkenMerkleRoot(
-        bytes32 chimkenMerkleRoot_
-    ) external onlyOwner {
-        _setChimkenMerkleRoot(chimkenMerkleRoot_);
+    function setFcfs(bytes32 fcfsMerkleRoot_) external onlyOwner {
+        fcfsMerkleRoot = fcfsMerkleRoot_;
     }
 
     function setMaxOhayoMint(uint256 newMaxOhayoMint) external onlyOwner {
