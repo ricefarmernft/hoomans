@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -85,6 +85,7 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
     event PublicMinted(address indexed to, uint256 tokenId);
     event OwnerMinted(address indexed to, uint256 tokenId);
     event OwnerMintedToFriends(address indexed to, uint256 tokenId);
+    event Airdrop(address indexed to, uint256 tokenId);
 
     event Withdrawn(uint256 amount, address withdrawnTo);
     event BaseURIUpdated(string newBaseURI, address updatedBy);
@@ -187,6 +188,26 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
             totalOhayoMinted += numTokens;
         } else if (group == 2) {
             chimkenlistMintedCount[msg.sender] += numTokens;
+        }
+    }
+
+    // Airdrop NFTs to Whitelisted Addresses
+    function airdrop(
+        address[] calldata toAddresses
+    ) public onlyOwner whenNotPaused {
+        require(
+            totalMinted + toAddresses.length <= MAX_SUPPLY,
+            "Minting would exceed max supply"
+        );
+
+        for (uint256 i = 0; i < toAddresses.length; i++) {
+            address to = toAddresses[i];
+            uint256 newTokenId = totalMinted + 1;
+
+            _mint(to, newTokenId);
+
+            totalMinted++;
+            emit Airdrop(to, newTokenId);
         }
     }
 
