@@ -56,8 +56,6 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
     bytes32 public guaranteedMerkleRoot;
     bytes32 public fcfsMerkleRoot;
 
-    mapping(address => uint256) public ohayoMintedCount;
-    mapping(address => uint256) public chimkenlistMintedCount;
     mapping(address => uint256) public publicMintedCount;
 
     // Contract Variables
@@ -65,11 +63,8 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
     string private unrevealedURI;
     uint256 public wlMintPrice = 6900000000000000; //0.0069 ETH mint price
     uint256 public publicMintPrice = 8800000000000000; //0.0088 ETH mint price for whitelist
-    uint256 public MAX_OHAYO_MINT = 3; // Whitelist max mint number
-    uint256 public constant MAX_OHAYO_SUPPLY = 300; // Ohayo max mint supply
-    uint256 public totalOhayoMinted = 0; // Total number of Ohayo NFTs minted so far
-    uint256 public constant MAX_WHITELIST_MINT = 2; // Whitelist max mint number
-    uint256 public constant MAX_PUBLIC_MINT = 3; // Public max mint number
+    uint256 public MAX_GUARANTEED_MINT = 2; // Whitelist max mint number
+    uint256 public constant MAX_FCFS_MINT = 2; // Whitelist max mint number
     uint256 public constant MAX_SUPPLY = 999; // Maximum number of NFTs
     uint256 public constant WHITELIST_SALE_SUPPLY = 999; // Number of NFTs available in whitelist sale
     uint256 public totalMinted = 0; // Total number of NFTs minted so far
@@ -123,74 +118,6 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         return false;
     }
 
-    // Whitelist Mint
-    function whitelistMint(
-        bytes32[] calldata _merkleProof,
-        uint256 numTokens,
-        uint256 group
-    ) public payable nonReentrant whenNotPaused {
-        require(whitelistOpen, "Whitelist sale is not open");
-        require(group == 1 || group == 2, "Invalid group specified");
-        require(totalMinted + numTokens <= MAX_SUPPLY, "Exceeds max supply");
-
-        // Define max tokens per group
-        uint256 maxTokens;
-        if (group == 1) {
-            maxTokens = MAX_OHAYO_MINT;
-        } else if (group == 2) {
-            maxTokens = MAX_WHITELIST_MINT;
-        }
-
-        require(
-            numTokens > 0 && numTokens <= maxTokens,
-            "Cannot mint more than allowed"
-        );
-
-        // Find Leaf
-        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
-        bytes32 merkleRoot = group == 1 ? guaranteedMerkleRoot : fcfsMerkleRoot;
-
-        require(
-            MerkleProof.verify(_merkleProof, merkleRoot, leaf),
-            group == 1
-                ? "Invalid Address: Guaranteed Group"
-                : "Invalid Address: FCFS Group"
-        );
-
-        // Ensure not exceeding mint limit per group
-        if (group == 1) {
-            require(
-                ohayoMintedCount[msg.sender] + numTokens <= MAX_OHAYO_MINT,
-                "Exceeds Ohayo WL limit"
-            );
-            require(
-                totalOhayoMinted + numTokens <= MAX_OHAYO_SUPPLY,
-                "Exceeds Ohayo max supply"
-            );
-        } else if (group == 2) {
-            require(
-                chimkenlistMintedCount[msg.sender] + numTokens <=
-                    MAX_WHITELIST_MINT,
-                "Exceeds Chimken WL limit"
-            );
-        }
-
-        // Calculate token cost
-        uint256 cost = calculateCost(numTokens);
-        require(msg.value == cost, "Incorrect ETH value sent");
-
-        // Mint tokens
-        mintTokens(msg.sender, numTokens, MintType.Whitelist);
-
-        // Update minted count
-        if (group == 1) {
-            ohayoMintedCount[msg.sender] += numTokens;
-            totalOhayoMinted += numTokens;
-        } else if (group == 2) {
-            chimkenlistMintedCount[msg.sender] += numTokens;
-        }
-    }
-
     // Airdrop NFTs to Whitelisted Addresses
     function airdrop(
         address[] calldata toAddresses
@@ -211,6 +138,48 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         }
     }
 
+    // Whitelist Mint
+    function whitelistMint(
+        bytes32[] calldata _merkleProof,
+        uint256 numTokens,
+        uint256 group
+    ) public payable nonReentrant whenNotPaused {
+        require(whitelistOpen, "Whitelist sale is not open");
+        require(group == 1 || group == 2, "Invalid group specified");
+        require(totalMinted + numTokens <= MAX_SUPPLY, "Exceeds max supply");
+
+        // Define max tokens per group
+        uint256 maxTokens;
+        if (group == 1) {
+            maxTokens = MAX_GUARANTEED_MINT;
+        } else if (group == 2) {
+            maxTokens = MAX_FCFS_MINT;
+        }
+
+        require(
+            numTokens > 0 && numTokens <= maxTokens,
+            "Cannot mint more than allowed"
+        );
+
+        // Find Leaf
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+        bytes32 merkleRoot = group == 1 ? guaranteedMerkleRoot : fcfsMerkleRoot;
+
+        require(
+            MerkleProof.verify(_merkleProof, merkleRoot, leaf),
+            group == 1
+                ? "Invalid Address: Guaranteed Group"
+                : "Invalid Address: FCFS Group"
+        );
+
+        // Calculate token cost
+        uint256 cost = calculateCost(numTokens);
+        require(msg.value == cost, "Incorrect ETH value sent");
+
+        // Mint tokens
+        mintTokens(msg.sender, numTokens, MintType.Whitelist);
+    }
+
     // Public Mint
     function publicMint(
         uint256 numTokens
@@ -218,10 +187,6 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         require(publicOpen, "Public sale is not open");
         require(numTokens > 0, "Must mint at least one token");
         require(totalMinted + numTokens <= MAX_SUPPLY, "Exceeds max supply");
-        require(
-            publicMintedCount[msg.sender] + numTokens <= MAX_PUBLIC_MINT,
-            "Max 3 NFTs per address in public mint"
-        );
         require(
             msg.value == publicMintPrice * numTokens,
             "Incorrect ETH value sent"
@@ -398,10 +363,6 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
 
     function setFcfs(bytes32 fcfsMerkleRoot_) external onlyOwner {
         fcfsMerkleRoot = fcfsMerkleRoot_;
-    }
-
-    function setMaxOhayoMint(uint256 newMaxOhayoMint) external onlyOwner {
-        MAX_OHAYO_MINT = newMaxOhayoMint;
     }
 
     // Fallback Functions
