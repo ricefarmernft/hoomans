@@ -7,77 +7,43 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/*
-    %+*                 :.+                                     
-    #..=               -...*                                    
-    *.=.-%            *..=.=%                                   
-    +.==.-%          #..=-..*                                   
-    +.=-:.:%  %%%%%%%...=-..+                                   
-    +.:-=:.............=--..:%                                  
-    *..=................=-...*                                  
-    *.:..................:...+                                  
-   %+........................-%                                 
-   %-.........................#                                 
-   %..........................-%                                
-  %:....+==+.....:#=++.........=%                               
- #..............................=%        %#-..+%               
-%#:...=....-==-..................=      ..........:*%%          
-%*....:#...*##*.......#*........:%     #..............*         
- #*.....+...........-=..........:+      =...............#       
-  #---::..+-.....-=..........:--+%        %:.............=      
-   %=-------------.......---*=-%-%          :.............=     
-   %#+*==---------------+#*+**:...%         +..............#    
-   #..-*++*--=--+%##%#+++*#........#       %*..............*##  
-  %=...---+%*=++++++*+=-............#      *...............*--# 
-  %:...---------------:..............%    %:..............:---=%
-  %:....:-----------..................%  %................-----#
-  %*.......-----:.....................*%+................:-----#
-   %...................................-=+..............:------%
-   %*.....................................=-..:::.:--:.-------*#
-    #.:....................................:*------------------#
-    #..:.....................................*----------------=%
-    %-..-........................-...........-+--------------=% 
-    %+...+:...........*..........-.....-:.....#-------------+   
-     #...:=---:......-=..........=:.-:........*=-----------#%%  
-     %....:+-----------.........----..........+=-----------=#   
-     %-.....=*=--------=........=--...........+=--------=*%     
-      #.......*==------+........+=............#-----=*%%        
-      %.......*--==----#.......-==...........=%                 
-       -......*--------#.......=-=-..........%                  
-       %......+--------*.......+-=-----:....#                   
-       *......+=-------#......+-=++-------:*%                   
-       -.......*------%.......++-----------%                    
-       *==+**#*++**####*:.-:-#########%%%%%                     
-
-*/
-
 contract Hoomans is ERC721, Ownable, ReentrancyGuard {
     // Merkle Root Variables
-    bytes32 public guaranteedMerkleRoot;
+    bytes32 public wlMerkleRoot;
     bytes32 public fcfsMerkleRoot;
+
+    mapping(address => uint256) public wlMintedCount;
+    mapping(address => uint256) public fcfsMintedCount;
+    mapping(address => uint256) public publicMintedCount;
 
     // Contract Variables
     string private revealedBaseURI;
     string private unrevealedURI;
 
-    uint256 public wlMintPrice = 6900000000000000; //0.0069 ETH mint price
-    uint256 public publicMintPrice = 6900000000000000; //0.0088 ETH mint price for whitelist
+    uint256 public wlMintPrice = 4200000000000000; //0.0042 ETH mint price
+    uint256 public publicMintPrice = 5000000000000000; //0.005 ETH mint price for whitelist
 
-    uint256 public constant MAX_GUARANTEED_MINT = 2; // Whitelist max mint number
-    uint256 public constant MAX_FCFS_MINT = 2; // Whitelist max mint number
-    uint256 public constant MAX_SUPPLY = 1999; // Maximum number of NFTs
-    uint256 public constant WHITELIST_SALE_SUPPLY = 1999; // Number of NFTs available in whitelist sale
+    uint256 public constant MAX_WL_MINT = 5; // Whitelist max mint number
+    uint256 public constant MAX_FCFS_MINT = 10; // FCFS max mint number
+    uint256 public constant MAX_PUBLIC_MINT = 10; // Public max mint number
+    uint256 public constant MAX_SUPPLY = 2000; // Maximum number of NFTs
+    uint256 public constant WHITELIST_SALE_SUPPLY = 2000; // Number of NFTs available in whitelist sale
 
+    uint256 public wlMinted = 0; // Total number of WL NFTs minted so far
+    uint256 public fcfsMinted = 0; // Total number of FCFS NFTs minted so far
+    uint256 public publicMinted = 0; // Total number of Public NFTs minted so far
     uint256 public totalMinted = 0; // Total number of NFTs minted so far
 
     // State Variables
     bool public isPaused = false;
     bool public revealed = false;
     bool public whitelistOpen = false;
+    bool public fcfsOpen = false;
     bool public publicOpen = false;
 
     // Events
     event WhitelistMinted(address indexed to, uint256 tokenId);
+    event FcfsMinted(address indexed to, uint256 tokenId);
     event PublicMinted(address indexed to, uint256 tokenId);
     event OwnerMinted(address indexed to, uint256 tokenId);
     event OwnerMintedToFriends(address indexed to, uint256 tokenId);
@@ -90,12 +56,12 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
 
     // Constructor
     constructor(
-        bytes32 guaranteedMerkleRoot_,
+        bytes32 wlMerkleRoot_,
         bytes32 fcfsMerkleRoot_,
         address initialOwner
     ) ERC721("Hoomans", "HOOMANS") Ownable(initialOwner) {
         unrevealedURI = "https://arweave.net/NwvwWUZxrQl8KRofnG3Tq9WAV4UJC0ylFKv9iGWUtYk/"; // Default URI
-        guaranteedMerkleRoot = guaranteedMerkleRoot_;
+        wlMerkleRoot = wlMerkleRoot_;
         fcfsMerkleRoot = fcfsMerkleRoot_;
     }
 
@@ -106,7 +72,7 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
 
         // Check against the first group's Merkle Root
-        if (MerkleProof.verify(_merkleProof, guaranteedMerkleRoot, leaf)) {
+        if (MerkleProof.verify(_merkleProof, wlMerkleRoot, leaf)) {
             return true;
         }
 
@@ -138,35 +104,26 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
     // Whitelist Mint
     function whitelistMint(
         bytes32[] calldata _merkleProof,
-        uint256 numTokens,
-        uint256 group
+        uint256 numTokens
     ) public payable nonReentrant whenNotPaused {
         require(whitelistOpen, "Whitelist sale is not open");
-        require(group == 1 || group == 2, "Invalid group specified");
         require(totalMinted + numTokens <= MAX_SUPPLY, "Exceeds max supply");
-
-        // Define max tokens per group
-        uint256 maxTokens;
-        if (group == 1) {
-            maxTokens = MAX_GUARANTEED_MINT;
-        } else if (group == 2) {
-            maxTokens = MAX_FCFS_MINT;
-        }
-
         require(
-            numTokens > 0 && numTokens <= maxTokens,
+            numTokens > 0 && numTokens <= MAX_WL_MINT,
             "Cannot mint more than allowed"
+        );
+        require(
+            wlMintedCount[msg.sender] + numTokens <= MAX_WL_MINT,
+            "Exceeds WL limit"
         );
 
         // Find Leaf
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
-        bytes32 merkleRoot = group == 1 ? guaranteedMerkleRoot : fcfsMerkleRoot;
+        bytes32 merkleRoot = wlMerkleRoot;
 
         require(
             MerkleProof.verify(_merkleProof, merkleRoot, leaf),
-            group == 1
-                ? "Invalid Address: Guaranteed Group"
-                : "Invalid Address: FCFS Group"
+            "Invalid Address: WL Group"
         );
 
         // Calculate token cost
@@ -175,6 +132,47 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
 
         // Mint tokens
         mintTokens(msg.sender, numTokens, MintType.Whitelist);
+
+        // Add WL token count
+        wlMintedCount[msg.sender] += numTokens;
+        wlMinted += numTokens;
+    }
+
+    // Fcfs Mint
+    function fcfsMint(
+        bytes32[] calldata _merkleProof,
+        uint256 numTokens
+    ) public payable nonReentrant whenNotPaused {
+        require(fcfsOpen, "FCFS sale is not open");
+        require(totalMinted + numTokens <= MAX_SUPPLY, "Exceeds max supply");
+        require(
+            numTokens > 0 && numTokens <= MAX_FCFS_MINT,
+            "Cannot mint more than allowed"
+        );
+        require(
+            fcfsMintedCount[msg.sender] + numTokens <= MAX_FCFS_MINT,
+            "Exceeds FCFS limit"
+        );
+
+        // Find Leaf
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+        bytes32 merkleRoot = fcfsMerkleRoot;
+
+        require(
+            MerkleProof.verify(_merkleProof, merkleRoot, leaf),
+            "Invalid Address: FCFS Group"
+        );
+
+        // Calculate token cost
+        uint256 cost = calculateCost(numTokens);
+        require(msg.value == cost, "Incorrect ETH value sent");
+
+        // Mint tokens
+        mintTokens(msg.sender, numTokens, MintType.Fcfs);
+
+        // Add FCFS token count
+        fcfsMintedCount[msg.sender] += numTokens;
+        fcfsMinted += numTokens;
     }
 
     // Public Mint
@@ -185,11 +183,24 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         require(numTokens > 0, "Must mint at least one token");
         require(totalMinted + numTokens <= MAX_SUPPLY, "Exceeds max supply");
         require(
+            numTokens > 0 && numTokens <= MAX_PUBLIC_MINT,
+            "Cannot mint more than allowed"
+        );
+        require(
+            publicMintedCount[msg.sender] + numTokens <= MAX_PUBLIC_MINT,
+            "Exceeds WL limit"
+        );
+        require(
             msg.value == publicMintPrice * numTokens,
             "Incorrect ETH value sent"
         );
 
+        // Mint Tokens
         mintTokens(msg.sender, numTokens, MintType.Public);
+
+        // Add Public token count
+        publicMintedCount[msg.sender] += numTokens;
+        publicMinted += numTokens;
     }
 
     // Owner Mint
@@ -208,22 +219,6 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         );
 
         mintTokens(to, numTokens, MintType.Owner);
-    }
-
-    // Owner Mint to Multiple Addresses
-    function ownerMintToFriends(
-        address[] calldata toAddresses
-    ) public onlyOwner whenNotPaused {
-        require(
-            totalMinted + toAddresses.length <= MAX_SUPPLY,
-            "Minting would exceed max supply"
-        );
-
-        for (uint256 i = 0; i < toAddresses.length; i++) {
-            address to = toAddresses[i];
-
-            mintTokens(to, 1, MintType.OwnerToFriends);
-        }
     }
 
     // Withdraw Function
@@ -255,12 +250,20 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         whitelistOpen = true;
     }
 
+    function startFcfsSale() external onlyOwner {
+        fcfsOpen = true;
+    }
+
     function startPublicSale() external onlyOwner {
         publicOpen = true;
     }
 
     function stopWhitelistSale() external onlyOwner {
         whitelistOpen = false;
+    }
+
+    function stopFcfsSale() external onlyOwner {
+        fcfsOpen = false;
     }
 
     function stopPublicSale() external onlyOwner {
@@ -311,8 +314,8 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
     enum MintType {
         Public,
         Whitelist,
+        Fcfs,
         Owner,
-        OwnerToFriends,
         Airdrop
     }
 
@@ -329,10 +332,10 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
                 emit PublicMinted(to, newTokenId);
             } else if (mintType == MintType.Whitelist) {
                 emit WhitelistMinted(to, newTokenId);
+            } else if (mintType == MintType.Fcfs) {
+                emit FcfsMinted(to, newTokenId);
             } else if (mintType == MintType.Owner) {
                 emit OwnerMinted(to, newTokenId);
-            } else if (mintType == MintType.OwnerToFriends) {
-                emit OwnerMintedToFriends(to, newTokenId);
             } else if (mintType == MintType.Airdrop) {
                 emit Airdrop(to, newTokenId);
             }
@@ -353,8 +356,8 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         publicMintPrice = newPublicMintPrice;
     }
 
-    function setGuaranteed(bytes32 guaranteedMerkleRoot_) external onlyOwner {
-        guaranteedMerkleRoot = guaranteedMerkleRoot_;
+    function setWl(bytes32 wlMerkleRoot_) external onlyOwner {
+        wlMerkleRoot = wlMerkleRoot_;
     }
 
     function setFcfs(bytes32 fcfsMerkleRoot_) external onlyOwner {
