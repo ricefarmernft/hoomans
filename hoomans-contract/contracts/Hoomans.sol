@@ -71,17 +71,27 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
     ) public view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
 
-        // Check against the first group's Merkle Root
+        // Check against the WL Merkle Root
         if (MerkleProof.verify(_merkleProof, wlMerkleRoot, leaf)) {
             return true;
         }
 
-        // Check against the second group's Merkle Root
+        // Address is not whitelisted
+        return false;
+    }
+
+    // Check if address is FCFS
+    function checkIsFcfs(
+        bytes32[] calldata _merkleProof
+    ) public view returns (bool) {
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+
+        // Check against the FCFS Merkle Root
         if (MerkleProof.verify(_merkleProof, fcfsMerkleRoot, leaf)) {
             return true;
         }
 
-        // Address is not whitelisted in either group
+        // Address is not FCFS
         return false;
     }
 
@@ -138,7 +148,7 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         wlMinted += numTokens;
     }
 
-    // Fcfs Mint
+    // FCFS Mint
     function fcfsMint(
         bytes32[] calldata _merkleProof,
         uint256 numTokens
@@ -188,7 +198,7 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         );
         require(
             publicMintedCount[msg.sender] + numTokens <= MAX_PUBLIC_MINT,
-            "Exceeds WL limit"
+            "Exceeds public mint limit"
         );
         require(
             msg.value == publicMintPrice * numTokens,
