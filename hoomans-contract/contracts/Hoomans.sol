@@ -27,7 +27,6 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
     uint256 public constant MAX_FCFS_MINT = 10; // FCFS max mint number
     uint256 public constant MAX_PUBLIC_MINT = 10; // Public max mint number
     uint256 public constant MAX_SUPPLY = 2000; // Maximum number of NFTs
-    uint256 public constant WHITELIST_SALE_SUPPLY = 2000; // Number of NFTs available in whitelist sale
 
     uint256 public wlMinted = 0; // Total number of WL NFTs minted so far
     uint256 public fcfsMinted = 0; // Total number of FCFS NFTs minted so far
