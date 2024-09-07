@@ -59,7 +59,7 @@ contract Hoomans is ERC721, Ownable, ReentrancyGuard {
         bytes32 fcfsMerkleRoot_,
         address initialOwner
     ) ERC721("Hoomans", "HOOMANS") Ownable(initialOwner) {
-        unrevealedURI = "https://arweave.net/NwvwWUZxrQl8KRofnG3Tq9WAV4UJC0ylFKv9iGWUtYk/"; // Default URI
+        unrevealedURI = "https://arweave.net/rl-SkK2bA9K1Ahs4SstMlPJdXjjSPDJFGBtIuCQ10Ro/"; // Default URI
         wlMerkleRoot = wlMerkleRoot_;
         fcfsMerkleRoot = fcfsMerkleRoot_;
     }
