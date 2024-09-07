@@ -5,9 +5,9 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   await deploy("Hoomans", {
     from: deployer,
     args: [
-      "0x337ae93572023fe44c88c5fca4ea9e53eeefd971494d9463033d5c4dd787437f",
-      "0x0391d218662af09b9122f8f1750b9eeb38bf4a8b0c29fe15ea763e352737bc5b",
-      "0x7CE4FA787582C9e5c9fEe9F1B6803Fd794359A69",
+      "0x2b76e341ca0b849ea770f365cf79f2bd8048257f57992b42d9cfe3204827c6b2", // WL Merkle Root
+      "0xfc2a536c8e0af110e891db9cae48c50aec54be9464903ce616fc86afa2cda09a", // FCFS Merkle Root
+      "0x7CE4FA787582C9e5c9fEe9F1B6803Fd794359A69", // Initial Owner
     ],
     log: true,
   });
