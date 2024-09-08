@@ -7,10 +7,6 @@ async function main() {
   // Replace with your deployed contract address
   const contractAddress = process.env.CONTRACT_ADDRESS;
 
-  // Withdrawal variables
-  const withdrawalAddress = "0xD3C6E4583BCc33339D733cb35034362D134A6749";
-  const withdrawalAmount = ethers.parseEther("0.021");
-
   // Replace with your contract name
   const Contract = await ethers.getContractFactory("Hoomans");
 
@@ -18,11 +14,9 @@ async function main() {
   const contract = await Contract.attach(contractAddress);
 
   // Call the start WL sale function
-  console.log("Withdrawing funds...");
-  const tx = await contract.withdraw(withdrawalAddress, withdrawalAmount);
-  console.log("Transaction submitted:", tx.hash);
-  await tx.wait();
-  console.log("Funds withdrawn successfully!");
+  console.log("Calculating public mint price...");
+  const publicMint = await contract.publicMintPrice();
+  console.log(`Public mint price: ${publicMint}`);
 }
 
 // Run the script with error handling

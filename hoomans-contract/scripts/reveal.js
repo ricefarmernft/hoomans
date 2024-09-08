@@ -8,7 +8,8 @@ async function main() {
   const contractAddress = process.env.CONTRACT_ADDRESS;
 
   // Reveal variables
-  const revealBaseUri = "";
+  const revealBaseUri =
+    "https://arweave.net/zbphPTKXrZkpej_ghNlw-BWKFB95LbfmhIJo-A7Hec4/";
 
   // Replace with your contract name
   const Contract = await ethers.getContractFactory("Hoomans");

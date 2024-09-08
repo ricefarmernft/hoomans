@@ -7,10 +7,6 @@ async function main() {
   // Replace with your deployed contract address
   const contractAddress = process.env.CONTRACT_ADDRESS;
 
-  // Withdrawal variables
-  const withdrawalAddress = "0xD3C6E4583BCc33339D733cb35034362D134A6749";
-  const withdrawalAmount = ethers.parseEther("0.021");
-
   // Replace with your contract name
   const Contract = await ethers.getContractFactory("Hoomans");
 
@@ -18,11 +14,11 @@ async function main() {
   const contract = await Contract.attach(contractAddress);
 
   // Call the start WL sale function
-  console.log("Withdrawing funds...");
-  const tx = await contract.withdraw(withdrawalAddress, withdrawalAmount);
-  console.log("Transaction submitted:", tx.hash);
-  await tx.wait();
-  console.log("Funds withdrawn successfully!");
+  console.log("Calculating total minted...");
+  const totalMinted = await contract.wlMintedCount(
+    "0x257434990898a303e2Fb458d1a46b68CDc47754b"
+  );
+  console.log(`Total tokens minted: ${totalMinted.toString()}`);
 }
 
 // Run the script with error handling
