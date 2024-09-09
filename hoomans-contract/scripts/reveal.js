@@ -9,7 +9,7 @@ async function main() {
 
   // Reveal variables
   const revealBaseUri =
-    "https://arweave.net/zbphPTKXrZkpej_ghNlw-BWKFB95LbfmhIJo-A7Hec4/";
+    "https://arweave.net/N0nf_FrILYIAfGNFuETZo_T2NaABtcpWcHZIjDuzoJ4/";
 
   // Replace with your contract name
   const Contract = await ethers.getContractFactory("Hoomans");

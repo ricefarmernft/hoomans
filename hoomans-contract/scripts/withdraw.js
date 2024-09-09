@@ -8,8 +8,8 @@ async function main() {
   const contractAddress = process.env.CONTRACT_ADDRESS;
 
   // Withdrawal variables
-  const withdrawalAddress = "0xD3C6E4583BCc33339D733cb35034362D134A6749";
-  const withdrawalAmount = ethers.parseEther("0.021");
+  const withdrawalAddress = "0x70e3d534196db1B9F7B07ad47082671bB0121d15";
+  const withdrawalAmount = ethers.parseEther("6.4604");
 
   // Replace with your contract name
   const Contract = await ethers.getContractFactory("Hoomans");
